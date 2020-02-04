@@ -105,13 +105,6 @@ private:
   }
 
 private:
-  auto balance(const RedBlackTreeNode *root) {
-    if (!root)
-      return 0;
-    return height(root->mLeft) - height(root->mRight);
-  }
-
-private:
   auto height(const RedBlackTreeNode *root) {
     if (!root)
       return 0;
@@ -123,6 +116,97 @@ private:
       return 0;
     return size(root->mLeft) + size(root->mRight) + 1;
   }
+
+private:
+  void rotate_left(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
+    RedBlackTreeNode *pt_right = pt->mRight;
+
+    pt->mRight = pt_right->mLeft;
+
+    if (pt->mRight != RedBlackTreeNode::NIL) {
+      pt->mRight->mParent = pt;
+    }
+    
+    pt_right->mParent = pt->mParent;
+
+    if (pt->mParent == RedBlackTreeNode::NIL) {
+      root = pt_right;
+    } else if (pt == pt->mParent->mLeft) {
+      pt->mParent->mLeft = pt_right;
+    } else {
+      pt->mParent->mRight = pt_right;
+    }
+    pt_right->mLeft = pt;
+    pt->mParent = pt_right;
+  }
+
+  void rotate_right(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
+    RedBlackTreeNode *pt_left = pt->mLeft;
+
+    pt->mLeft = pt_left->mRight;
+
+    if (pt->mLeft != RedBlackTreeNode::NIL) {
+      pt->mLeft->mParent = pt;
+    }
+
+    pt_left->mParent = pt->mParent;
+
+    if (pt->mParent == RedBlackTreeNode::NIL) {
+      root = pt_left;
+    } else if (pt == pt->mParent->mLeft) {
+      pt->mParent->mLeft = pt_left;
+    } else {
+      pt->mParent->mRight = pt_left;
+    }
+    pt_left->mRight = pt;
+    pt->mParent = pt_left;
+  }
+
+	void ll_rotate(RedBlackTreeNode *&pt) {
+		RedBlackTreeNode *pt_right = pt->mRight;
+
+		pt->mRight = pt_right->mLeft;
+
+		if (pt->mRight != RedBlackTreeNode::NIL) {
+			pt->mRight->mParent = pt;
+    }
+
+		pt_right->mParent = pt->mParent;
+
+		if (pt->mParent == RedBlackTreeNode::NIL) {
+			root = pt_right;
+    } else if (pt == pt->mParent->mLeft) {
+			pt->mParent->mLeft = pt_right;
+    } else {
+			pt->mParent->mRight = pt_right;
+    }
+
+		pt_right->mLeft = pt;
+		pt->mParent = pt_right;
+	}
+
+  void rr_rotate(RedBlackTreeNode*& pt) {
+		RedBlackTreeNode *pt_left = pt->mLeft;
+
+		pt->mLeft = pt_left->mRight;
+
+		if (pt->mLeft != RedBlackTreeNode::NIL) {
+			pt->mLeft->mParent = pt;
+    }
+
+		pt_left->mParent = pt->mParent;
+
+		if (pt->mParent == RedBlackTreeNode::NIL) {
+			root = pt_left;
+    } else if (pt == pt->mParent->mLeft) {
+			pt->mParent->mLeft = pt_left;
+    } else {
+			pt->mParent->mRight = pt_left;
+    }
+
+		pt_left->mRight = pt;
+		pt->mParent = pt_left;
+	}
 
 private:
   RedBlackTreeNode *insert(RedBlackTreeNode *root, const T &key) {
@@ -147,51 +231,6 @@ private:
     return root;
   }
 
-  void rotate_left(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
-    RedBlackTreeNode *pt_right = pt->mRight;
-
-    pt->mRight = pt_right->mLeft;
-
-    if (pt->mRight != RedBlackTreeNode::NIL) {
-      pt->mRight->mParent = pt;
-    }
-    
-    pt_right->mParent = pt->mParent;
-
-    if (pt->mParent == RedBlackTreeNode::NIL) {
-      root = pt_right;
-    } else if (pt == pt->mParent->mLeft) {
-      pt->mParent->mLeft = pt_right;
-    } else {
-      pt->mParent->mRight = pt_right;
-    }
-    pt_right->mLeft = pt;
-    pt->mParent = pt_right;
-  }
-
-  void rotate_right(RedBlackTreeNode *&root, RedBlackTreeNode *&pt)
-  {
-    RedBlackTreeNode *pt_left = pt->mLeft;
-
-    pt->mLeft = pt_left->mRight;
-
-    if (pt->mLeft != RedBlackTreeNode::NIL) {
-      pt->mLeft->mParent = pt;
-    }
-
-    pt_left->mParent = pt->mParent;
-
-    if (pt->mParent == RedBlackTreeNode::NIL) {
-      root = pt_left;
-    } else if (pt == pt->mParent->mLeft) {
-      pt->mParent->mLeft = pt_left;
-    } else {
-      pt->mParent->mRight = pt_left;
-    }
-    pt_left->mRight = pt;
-    pt->mParent = pt_left;
-  }
-
   void insert_fix(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
     RedBlackTreeNode *parent = RedBlackTreeNode::NIL;
     RedBlackTreeNode *grand_parent = RedBlackTreeNode::NIL;
@@ -199,58 +238,36 @@ private:
     while ((pt != root) && (pt->mColor != true) && (pt->mParent->mColor == false)) {
       parent = pt->mParent;
       grand_parent = pt->mParent->mParent;
-      /*  Case : A 
-            Parent of pt is left child of Grand-parent of pt */
       if (parent == grand_parent->mLeft) {
         Node *uncle = grand_parent->mRight;
-        /* Case : 1 
-              The uncle of pt is also red 
-              Only Recoloring required */
         if (uncle != RedBlackTreeNode::NIL && uncle->mColor == RED) {
           grand_parent->mColor = RED;
           parent->mColor = true;
           uncle->mColor = true;
           pt = grand_parent;
         } else {
-          /* Case : 2 
-                pt is right child of its parent 
-                Left-rotation required */
           if (pt == parent->mRight) {
             rotate_left(root, parent);
             pt = parent;
             parent = pt->mParent;
           }
-          /* Case : 3 
-                pt is left child of its parent 
-                Right-rotation required */
           rotate_right(root, grand_parent);
           std::swap(parent->mColor, grand_parent->mColor);
           pt = parent;
         }
       } else {
-        /* Case : B 
-              Parent of pt is right child of Grand-parent of pt */
         Node *uncle = grand_parent->mLeft;
-        /*  Case : 1 
-              The uncle of pt is also red 
-              Only Recoloring required */
         if ((uncle != RedBlackTreeNode::NIL) && (uncle->mColor == false)) {
           grand_parent->mColor = false;
           parent->mColor = true;
           uncle->mColor = true;
           pt = grand_parent;
         } else {
-          /* Case : 2 
-                pt is left child of its parent 
-                Right-rotation required */
           if (pt == parent->mLeft) {
             rotate_right(root, parent);
             pt = parent;
             parent = pt->mParent;
           }
-          /* Case : 3 
-                pt is right child of its parent 
-                Left-rotation required */
           rotate_left(root, grand_parent);
           std::swap(parent->mColor, grand_parent->mColor);
           pt = parent;
@@ -261,8 +278,10 @@ private:
     root->mColor = true;
   }
 
-  // remove
+private:
+  // remove 
 
+private:
   template <typename U> RedBlackTreeNode *search(RedBlackTreeNode *root, const U &key) {
     while (root) {
       if (root->mKey < key) {
