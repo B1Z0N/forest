@@ -17,12 +17,19 @@ private:
   private:
     RedBlackTreeNode *mLeft{nullptr};
     RedBlackTreeNode *mRight{nullptr};
+    RedBlackTreeNode *mParent{nullptr};
+    // 0(false) means red, 1(true) means black
+    bool mColor{false}; 
 
   private:
     int height{1};
 
+
   public:
     T mKey;
+
+  public:
+    static RedBlackTreeNode* NIL;
 
   public:
     RedBlackTreeNode() = default;
@@ -118,40 +125,143 @@ private:
   }
 
 private:
-  RedBlackTreeNode *rotate_right(RedBlackTreeNode *root) {
-    RedBlackTreeNode *pivot{root->mLeft};
-    RedBlackTreeNode *orphan{pivot->mRight};
-
-    pivot->mRight = root;
-    root->mLeft = orphan;
-
-    root->height = std::max(height(root->mLeft), height(root->mRight)) + 1;
-    pivot->height = std::max(height(pivot->mLeft), height(pivot->mRight)) + 1;
-
-    return pivot;
-  }
-
-  RedBlackTreeNode *rotate_left(RedBlackTreeNode *root) {
-    RedBlackTreeNode *pivot{root->mRight};
-    RedBlackTreeNode *orphan{pivot->mLeft};
-
-    pivot->mLeft = root;
-    root->mRight = orphan;
-
-    root->height = std::max(height(root->mLeft), height(root->mRight)) + 1;
-    pivot->height = std::max(height(pivot->mLeft), height(pivot->mRight)) + 1;
-
-    return pivot;
-  }
-
-private:
   RedBlackTreeNode *insert(RedBlackTreeNode *root, const T &key) {
-    // TODO
+    if (root == RedBlackTreeNode::NIL)
+      return new RedBlackTreeNode{key};
+
+    RedBlackTreeNode *current = root, previous;
+    while (current != RedBlackTreeNode::NIL) {
+      previous = current;
+      current = current->mKey > key ? current->mLeft : current->mRight;
+    }
+
+    current = new RedBlackTreeNode{key};
+    if (previous->mKey > key) {
+      previous->mLeft = current;
+    } else {
+      previous->mRight = current;
+    }
+    current->mParent = previous;
+
+    insert_fix(root, current);
+    return root;
   }
 
-  template <typename U> RedBlackTreeNode *remove(RedBlackTreeNode *root, const U &key) {
-    // TODO
+  void rotate_left(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
+    RedBlackTreeNode *pt_right = pt->mRight;
+
+    pt->mRight = pt_right->mLeft;
+
+    if (pt->mRight != RedBlackTreeNode::NIL) {
+      pt->mRight->mParent = pt;
+    }
+    
+    pt_right->mParent = pt->mParent;
+
+    if (pt->mParent == RedBlackTreeNode::NIL) {
+      root = pt_right;
+    } else if (pt == pt->mParent->mLeft) {
+      pt->mParent->mLeft = pt_right;
+    } else {
+      pt->mParent->mRight = pt_right;
+    }
+    pt_right->mLeft = pt;
+    pt->mParent = pt_right;
   }
+
+  void rotate_right(RedBlackTreeNode *&root, RedBlackTreeNode *&pt)
+  {
+    RedBlackTreeNode *pt_left = pt->mLeft;
+
+    pt->mLeft = pt_left->mRight;
+
+    if (pt->mLeft != RedBlackTreeNode::NIL) {
+      pt->mLeft->mParent = pt;
+    }
+
+    pt_left->mParent = pt->mParent;
+
+    if (pt->mParent == RedBlackTreeNode::NIL) {
+      root = pt_left;
+    } else if (pt == pt->mParent->mLeft) {
+      pt->mParent->mLeft = pt_left;
+    } else {
+      pt->mParent->mRight = pt_left;
+    }
+    pt_left->mRight = pt;
+    pt->mParent = pt_left;
+  }
+
+  void insert_fix(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
+    RedBlackTreeNode *parent = RedBlackTreeNode::NIL;
+    RedBlackTreeNode *grand_parent = RedBlackTreeNode::NIL;
+
+    while ((pt != root) && (pt->mColor != true) && (pt->mParent->mColor == false)) {
+      parent = pt->mParent;
+      grand_parent = pt->mParent->mParent;
+      /*  Case : A 
+            Parent of pt is left child of Grand-parent of pt */
+      if (parent == grand_parent->mLeft) {
+        Node *uncle = grand_parent->mRight;
+        /* Case : 1 
+              The uncle of pt is also red 
+              Only Recoloring required */
+        if (uncle != RedBlackTreeNode::NIL && uncle->mColor == RED) {
+          grand_parent->mColor = RED;
+          parent->mColor = true;
+          uncle->mColor = true;
+          pt = grand_parent;
+        } else {
+          /* Case : 2 
+                pt is right child of its parent 
+                Left-rotation required */
+          if (pt == parent->mRight) {
+            rotate_left(root, parent);
+            pt = parent;
+            parent = pt->mParent;
+          }
+          /* Case : 3 
+                pt is left child of its parent 
+                Right-rotation required */
+          rotate_right(root, grand_parent);
+          std::swap(parent->mColor, grand_parent->mColor);
+          pt = parent;
+        }
+      } else {
+        /* Case : B 
+              Parent of pt is right child of Grand-parent of pt */
+        Node *uncle = grand_parent->mLeft;
+        /*  Case : 1 
+              The uncle of pt is also red 
+              Only Recoloring required */
+        if ((uncle != RedBlackTreeNode::NIL) && (uncle->mColor == false)) {
+          grand_parent->mColor = false;
+          parent->mColor = true;
+          uncle->mColor = true;
+          pt = grand_parent;
+        } else {
+          /* Case : 2 
+                pt is left child of its parent 
+                Right-rotation required */
+          if (pt == parent->mLeft) {
+            rotate_right(root, parent);
+            pt = parent;
+            parent = pt->mParent;
+          }
+          /* Case : 3 
+                pt is right child of its parent 
+                Left-rotation required */
+          rotate_left(root, grand_parent);
+          std::swap(parent->mColor, grand_parent->mColor);
+          pt = parent;
+        }
+      }
+    }
+
+    root->mColor = true;
+  }
+
+  // remove
 
   template <typename U> RedBlackTreeNode *search(RedBlackTreeNode *root, const U &key) {
     while (root) {
