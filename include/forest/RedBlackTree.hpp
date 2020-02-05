@@ -23,9 +23,6 @@ private:
     enum Color { RED, BLACK, DOUBLE_BLACK }; 
     Color mColor{BLACK}; 
 
-  private:
-    int height{1};
-
   public:
     T mKey;
 
@@ -115,9 +112,8 @@ private:
 
 private:
   auto height(const RedBlackTreeNode *root) {
-    if (root == NIL)
-      return 0;
-    return root->height;
+    if (root == NIL) return 0;
+    return std::max(height(root->mLeft), height(root->mRight));
   }
 
   auto size(const RedBlackTreeNode *root) {
