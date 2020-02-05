@@ -120,11 +120,10 @@ private:
 private:
   void rotate_left(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
     RedBlackTreeNode *pt_right = pt->mRight;
-
     pt->mRight = pt_right->mLeft;
 
-    if (pt->mRight != NIL) {
-      pt->mRight->mParent = pt;
+    if (pt->mLeft != NIL) {
+      pt->mLeft->mParent = pt;
     }
     
     pt_right->mParent = pt->mParent;
@@ -142,21 +141,20 @@ private:
 
   void rotate_right(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
     RedBlackTreeNode *pt_left = pt->mLeft;
-
     pt->mLeft = pt_left->mRight;
 
-    if (pt->mLeft != NIL) {
-      pt->mLeft->mParent = pt;
+    if (pt->mRight != NIL) {
+      pt->mRight->mParent = pt;
     }
 
     pt_left->mParent = pt->mParent;
 
     if (pt->mParent == NIL) {
       root = pt_left;
-    } else if (pt == pt->mParent->mLeft) {
-      pt->mParent->mLeft = pt_left;
-    } else {
+    } else if (pt == pt->mParent->mRight) {
       pt->mParent->mRight = pt_left;
+    } else {
+      pt->mParent->mLeft = pt_left;
     }
     pt_left->mRight = pt;
     pt->mParent = pt_left;
@@ -222,24 +220,23 @@ private:
 
 private:
   RedBlackTreeNode *insert(RedBlackTreeNode *root, const T &key) {
-    if (root == NIL) {
-      return new RedBlackTreeNode{key};
+    RedBlackTreeNode *parent = NIL, *child = root, *nd = new RedBlackTreeNode{key};
+    while (child != NIL) {
+      parent = child;
+      if (nd->mKey< child->mKey)
+        child = child->mLeft;
+      else
+        child = child->mRight;
     }
-    RedBlackTreeNode *current = root, *previous;
-    while (current != NIL) {
-      previous = current;
-      current = current->mKey > key ? current->mLeft : current->mRight;
-    }
+    nd->mParent = parent;
+    if (parent == NIL)
+      return nd;
+    else if (nd->mKey < parent->mKey)
+      parent->mLeft = nd;
+    else
+      parent->mRight = nd;
 
-    current = new RedBlackTreeNode{key};
-    if (previous->mKey > key) {
-      previous->mLeft = current;
-    } else {
-      previous->mRight = current;
-    }
-    current->mParent = previous;
-
-    insert_fix(root, current);
+    insert_fix(root, nd);
     return root;
   }
 
