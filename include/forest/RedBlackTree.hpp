@@ -18,20 +18,21 @@ private:
     RedBlackTreeNode *mLeft{NIL};
     RedBlackTreeNode *mRight{NIL};
     RedBlackTreeNode *mParent{NIL};
-    // 0(false) means red, 1(true) means black
-    bool mColor{false}; 
+
+  private:
+    enum Color { RED, BLACK, DOUBLE_BLACK }; 
+    Color mColor{BLACK}; 
 
   private:
     int height{1};
-
 
   public:
     T mKey;
 
   public:
-    RedBlackTreeNode() = default;
+    RedBlackTreeNode(Color color = RED) :mColor{color} {}
 
-    RedBlackTreeNode(const T &key) : mKey(key) {}
+    RedBlackTreeNode(const T &key, Color color = RED) : mKey(key), mColor{color} {}
 
     RedBlackTreeNode(const RedBlackTreeNode &) = delete;
     RedBlackTreeNode(RedBlackTreeNode &&) = delete;
@@ -40,17 +41,19 @@ private:
     ~RedBlackTreeNode() = default;
   
   public:
-    inline bool red() const { return !mColor; }
-    inline bool black() const { return mColor; }
-    inline void set_red() { mColor = false; }
-    inline void set_black() { mColor = true; }
+    inline bool red() const { return mColor == RED; }
+    inline bool black() const { return mColor == BLACK; }
+    inline bool double_black() const { return mColor == DOUBLE_BLACK; }
+    inline void set_red() { mColor = RED; }
+    inline void set_black() { mColor = BLACK; }
+    inline void set_double_black() { mColor = DOUBLE_BLACK; }
   };
 
   static RedBlackTreeNode NIL_VAL;
   static RedBlackTreeNode* NIL;
 
 private:
-  RedBlackTreeNode *mRoot{NIL};
+  RedBlackTreeNode *mroot{NIL};
 
 private:
   void pre_order_traversal(RedBlackTreeNode *root, Callback callback) {
@@ -166,52 +169,6 @@ private:
     pt->mParent = pt_left;
   }
 
-	void ll_rotate(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
-		RedBlackTreeNode *pt_right = pt->mRight;
-
-		pt->mRight = pt_right->mLeft;
-
-		if (pt->mRight != NIL) {
-			pt->mRight->mParent = pt;
-    }
-
-		pt_right->mParent = pt->mParent;
-
-		if (pt->mParent == NIL) {
-			root = pt_right;
-    } else if (pt == pt->mParent->mLeft) {
-			pt->mParent->mLeft = pt_right;
-    } else {
-			pt->mParent->mRight = pt_right;
-    }
-
-		pt_right->mLeft = pt;
-		pt->mParent = pt_right;
-	}
-
-  void rr_rotate(RedBlackTreeNode*& root, RedBlackTreeNode*& pt) {
-		RedBlackTreeNode *pt_left = pt->mLeft;
-
-		pt->mLeft = pt_left->mRight;
-
-		if (pt->mLeft != NIL) {
-			pt->mLeft->mParent = pt;
-    }
-
-		pt_left->mParent = pt->mParent;
-
-		if (pt->mParent == NIL) {
-			root = pt_left;
-    } else if (pt == pt->mParent->mLeft) {
-			pt->mParent->mLeft = pt_left;
-    } else {
-			pt->mParent->mRight = pt_left;
-    }
-
-		pt_left->mRight = pt;
-		pt->mParent = pt_left;
-	}
-
   void transplant(RedBlackTreeNode*& root, RedBlackTreeNode *to, RedBlackTreeNode *from) {
     if (to->mParent == NIL) {
       root = from;
@@ -289,129 +246,111 @@ private:
   }
 
 private:
-  RedBlackTreeNode *remove(RedBlackTreeNode *root, const T &key)
+  void remove_fix(RedBlackTreeNode *&root, RedBlackTreeNode *&node)
   {
-    RedBlackTreeNode *z = NIL, *x, *y, *node = root;
-    while (node != NIL)
-    {
-      if (node->mKey == key)
-      {
-        z = node;
-      }
-      if (node->mKey <= key)
-      {
-        node = node->mRight;
-      }
-      else
-      {
-        node = node->mLeft;
-      }
+    if (node == NIL) return;
+
+    if (node == root) {
+      root = NIL;
+      return;
     }
-    if (z == NIL) return root;
-    y = z;
-    bool color = y->mColor;
-    if (z->mLeft == NIL)
-    {
-      x = z->mRight;
-      transplant(root, z, z->mRight);
-    }
-    else if (z->mRight == NIL)
-    {
-      x = z->mLeft;
-      transplant(root, z, z->mLeft);
-    }
-    else
-    {
-      y = minimum(z->mRight);
-      color = y->mColor;
-      x = y->mRight;
-      if (y->mParent == z)
-      {
-        x->mParent = y;
+
+    if (node->red() || node->mLeft->red() || node->mRight->red()) {
+      RedBlackTreeNode *child = node->mLeft != NIL ? node->mLeft : node->mRight;
+
+      if (node == node->mParent->mLeft) {
+        node->mParent->mLeft = child;
+        if (child != NIL) child->mParent = node->mParent;
+        child->set_black();
+        delete node;
+      } else {
+        node->mParent->mRight = child;
+        if (child != NIL) child->mParent = node->mParent;
+        child->set_black();
+        delete node;
       }
-      else
-      {
-        transplant(root, y, y->mRight);
-        y->mRight = z->mRight;
-        y->mRight->mParent = y;
+    } else {
+      RedBlackTreeNode *sibling = NIL;
+      RedBlackTreeNode *parent = NIL;
+      RedBlackTreeNode *ptr = node;
+      ptr->set_double_black();
+      while (ptr != root && ptr->double_black()) {
+        parent = ptr->mParent;
+        if (ptr == parent->mLeft) {
+          sibling = parent->mRight;
+          if (sibling->red()) {
+            sibling->set_black();
+            parent->set_red();
+            rotate_left(root, parent);
+          } else {
+            if (sibling->mLeft->black() && sibling->mRight->black()) {
+              sibling->set_red();
+              if (parent->red()) parent->set_black();
+              else parent->set_double_black();
+              ptr = parent;
+            } else {
+              if (sibling->mRight->black()) {
+                sibling->mLeft->set_black();
+                sibling->set_red();
+                rotate_right(root, sibling);
+                sibling = parent->mRight;
+              }
+              sibling->mColor = parent->mColor;
+              parent->set_black();
+              sibling->mRight->set_black();
+              rotate_left(root, parent);
+              break;
+            }
+          }
+        } else {
+          sibling = parent->mLeft;
+          if (sibling->red()) {
+            sibling->set_black();
+            parent->set_red();
+            rotate_right(root, parent);
+          } else {
+            if (sibling->mLeft->black() && sibling->mRight->black()) {
+              sibling->set_red();
+              if (parent->red()) parent->set_black();
+              else parent->set_double_black();
+              ptr = parent;
+            } else {
+              if (sibling->mLeft->black()) {
+                sibling->mRight->set_black();
+                sibling->set_red();
+                rotate_left(root, sibling);
+                sibling = parent->mLeft;
+              }
+              sibling->mColor = parent->mColor;
+              parent->set_black();
+              sibling->mLeft->set_black();
+              rotate_right(root, parent);
+              break;
+            }
+          }
+        }
       }
-      transplant(root, z, y);
-      y->mLeft = z->mLeft;
-      y->mLeft->mParent = y;
-      y->mColor = z->mColor;
+      if (node == node->mParent->mLeft) node->mParent->mLeft = NIL;
+      else node->mParent->mRight = NIL;
+      delete node;
+      root->set_black();
     }
-    delete z;
-    if (color == true) remove_fix(root, x); // black
-    return root;
   }
 
-  void remove_fix(RedBlackTreeNode *root, RedBlackTreeNode *x)
+  RedBlackTreeNode *remove(RedBlackTreeNode *&root, const T& data)
   {
-    RedBlackTreeNode *s;
-    while (x != root && x->black())
-      if (x == x->mParent->mLeft)
-      {
-        s = x->mParent->mRight;
-        if (s->red())
-        {
-          s->set_black();
-          x->mParent->set_red();
-          rotate_left(root, x->mParent);
-          s = x->mParent->mRight;
-        }
-        if (s->mLeft->black() && s->mRight->black())
-        {
-          s->set_red();
-          x = x->mParent;
-        }
-        else
-        {
-          if (s->mRight->black())
-          {
-            s->mLeft->set_black();
-            s->set_red();
-            rotate_right(root, s);
-            s = x->mParent->mRight;
-          }
-          s->mColor = x->mParent->mColor;
-          x->mParent->set_black();
-          s->mRight->set_black();
-          rotate_left(root, x->mParent);
-          x = root;
-        }
-      }
-      else
-      {
-        s = x->mParent->mLeft;
-        if (s->red())
-        {
-          s->set_black();
-          x->mParent->set_red();
-          rotate_right(root, x->mParent);
-          s = x->mParent->mLeft;
-        }
-        if (s->mRight->black() && s->mRight->black())
-        {
-          s->set_red();
-          x = x->mParent;
-        }
-        else
-        {
-          if (s->mLeft->black())
-          {
-            s->mRight->set_black();
-            s->set_red();
-            rotate_left(root, s);
-            s = x->mParent->mLeft;
-          }
-          s->mColor = x->mParent->mColor;
-          x->mParent->set_black();
-          s->mLeft->set_black();
-          rotate_right(root, x->mParent);
-          x = root;
-        }
-      }
-    x->set_black();
+    if (root == NIL) return root;
+
+    if (data < root->mKey)
+      return remove(root->mLeft, data);
+    else if (data > root->mKey)
+      return remove(root->mRight, data);
+
+    if (root->mLeft == NIL || root->mRight == NIL) return root;
+
+    auto *temp = minimum(root->mRight);
+    root->mKey = temp->mKey;
+    return remove(root->mRight, temp->mKey);
   }
 
 private:
@@ -460,62 +399,64 @@ public:
 
 public:
   void pre_order_traversal(Callback callback) {
-    pre_order_traversal(mRoot, callback);
+    pre_order_traversal(mroot, callback);
   }
 
   void in_order_traversal(Callback callback) {
-    in_order_traversal(mRoot, callback);
+    in_order_traversal(mroot, callback);
   }
 
   void post_order_traversal(Callback callback) {
-    post_order_traversal(mRoot, callback);
+    post_order_traversal(mroot, callback);
   }
 
   void breadth_first_traversal(Callback callback) {
-    breadth_first_traversal(mRoot, callback);
+    breadth_first_traversal(mroot, callback);
   }
 
 public:
   auto minimum() {
-    auto min = minimum(mRoot);
+    auto min = minimum(mroot);
     return min != NIL ? std::optional<std::reference_wrapper<T>>{min->mKey}
                : std::nullopt;
   }
 
   auto maximum() {
-    auto max = maximum(mRoot);
+    auto max = maximum(mroot);
     return max != NIL ? std::optional<std::reference_wrapper<T>>{max->mKey}
                : std::nullopt;
   }
 
 public:
-  auto height() { return height(mRoot); }
+  auto height() { return height(mroot); }
 
-  auto size() { return size(mRoot); }
+  auto size() { return size(mroot); }
 
 public:
-  void insert(const T &key) { mRoot = insert(mRoot, key); }
+  void insert(const T &key) { mroot = insert(mroot, key); }
 
   template <typename U> void remove(const U &key) {
-    mRoot = remove(mRoot, key);
+    auto *nd = remove(mroot, key);
+    remove_fix(mroot, nd);
   }
 
   template <typename U> auto search(const U &key) {
-    auto res = search(mRoot, key);
+    auto res = search(mroot, key);
     return res != NIL ? std::optional<std::reference_wrapper<T>>{res->mKey}
                : std::nullopt;
   }
 
 public:
   void clear() {
-    clear(mRoot);
-    mRoot = NIL;
+    clear(mroot);
+    mroot = NIL;
   }
 };
 
 template <typename T>
-typename RedBlackTree<T>::RedBlackTreeNode RedBlackTree<T>::NIL_VAL = RedBlackTree<T>::RedBlackTreeNode{};
+typename RedBlackTree<T>::RedBlackTreeNode RedBlackTree<T>::NIL_VAL = \
+  RedBlackTree<T>::RedBlackTreeNode{RedBlackTree<T>::RedBlackTreeNode::BLACK};
 template <typename T>
-typename RedBlackTree<T>::RedBlackTreeNode* RedBlackTree<T>::NIL = &RedBlackTree<T>::NIL_VAL;
+typename RedBlackTree<T>::RedBlackTreeNode *RedBlackTree<T>::NIL = &RedBlackTree<T>::NIL_VAL;
 
 } // namespace forest
