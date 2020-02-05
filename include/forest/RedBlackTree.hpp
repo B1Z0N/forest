@@ -38,6 +38,12 @@ private:
     RedBlackTreeNode &operator=(const RedBlackTreeNode &) = delete;
     RedBlackTreeNode &operator=(RedBlackTreeNode &&) = delete;
     ~RedBlackTreeNode() = default;
+  
+  public:
+    inline bool red() const { return !mColor; }
+    inline bool black() const { return mColor; }
+    inline void set_red() { mColor = false; }
+    inline void set_black() { mColor = true; }
   };
 
   static RedBlackTreeNode NIL_VAL;
@@ -122,8 +128,8 @@ private:
     RedBlackTreeNode *pt_right = pt->mRight;
     pt->mRight = pt_right->mLeft;
 
-    if (pt->mLeft != NIL) {
-      pt->mLeft->mParent = pt;
+    if (pt->mRight != NIL) {
+      pt->mRight->mParent = pt;
     }
     
     pt_right->mParent = pt->mParent;
@@ -143,18 +149,18 @@ private:
     RedBlackTreeNode *pt_left = pt->mLeft;
     pt->mLeft = pt_left->mRight;
 
-    if (pt->mRight != NIL) {
-      pt->mRight->mParent = pt;
+    if (pt->mLeft != NIL) {
+      pt->mLeft->mParent = pt;
     }
 
     pt_left->mParent = pt->mParent;
 
     if (pt->mParent == NIL) {
       root = pt_left;
-    } else if (pt == pt->mParent->mRight) {
-      pt->mParent->mRight = pt_left;
-    } else {
+    } else if (pt == pt->mParent->mLeft) {
       pt->mParent->mLeft = pt_left;
+    } else {
+      pt->mParent->mRight = pt_left;
     }
     pt_left->mRight = pt;
     pt->mParent = pt_left;
@@ -221,82 +227,208 @@ private:
 private:
   RedBlackTreeNode *insert(RedBlackTreeNode *root, const T &key) {
     RedBlackTreeNode *parent = NIL, *child = root, *nd = new RedBlackTreeNode{key};
+
     while (child != NIL) {
       parent = child;
-      if (nd->mKey< child->mKey)
-        child = child->mLeft;
-      else
-        child = child->mRight;
+      if (nd->mKey < child->mKey) child = child->mLeft;
+      else child = child->mRight;
     }
+
+    if (parent == NIL) { nd->set_black(); return nd; }
+    else if (nd->mKey < parent->mKey) parent->mLeft = nd;
+    else parent->mRight = nd;
     nd->mParent = parent;
-    if (parent == NIL)
-      return nd;
-    else if (nd->mKey < parent->mKey)
-      parent->mLeft = nd;
-    else
-      parent->mRight = nd;
 
     insert_fix(root, nd);
     return root;
   }
 
   void insert_fix(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
-    RedBlackTreeNode *parent = NIL;
-    RedBlackTreeNode *grand_parent = NIL;
-
-    while ((pt != root) && (pt->mColor != true) && (pt->mParent->mColor == false)) {
+    RedBlackTreeNode *parent = NIL, *gparent = NIL;
+    while ((pt != root) && (pt->red()) && (pt->mParent->red())) {
       parent = pt->mParent;
-      grand_parent = pt->mParent->mParent;
-      if (parent == grand_parent->mLeft) {
-        RedBlackTreeNode *uncle = grand_parent->mRight;
-        if (uncle != NIL && uncle->mColor == false) {
-          grand_parent->mColor = false;
-          parent->mColor = true;
-          uncle->mColor = true;
-          pt = grand_parent;
+      gparent = pt->mParent->mParent;
+      if (parent == gparent->mLeft) {
+        RedBlackTreeNode *uncle = gparent->mRight;
+        if (uncle != NIL && uncle->red()) {
+          gparent->set_red();
+          parent->set_black();
+          uncle->set_black();
+          pt = gparent;
         } else {
           if (pt == parent->mRight) {
             rotate_left(root, parent);
             pt = parent;
             parent = pt->mParent;
           }
-          rotate_right(root, grand_parent);
-          std::swap(parent->mColor, grand_parent->mColor);
+          rotate_right(root, gparent);
+          std::swap(parent->mColor, gparent->mColor);
           pt = parent;
         }
       } else {
-        RedBlackTreeNode *uncle = grand_parent->mLeft;
-        if ((uncle != NIL) && (uncle->mColor == false)) {
-          grand_parent->mColor = false;
-          parent->mColor = true;
-          uncle->mColor = true;
-          pt = grand_parent;
+        RedBlackTreeNode *uncle = gparent->mLeft;
+        if ((uncle != NIL) && (uncle->red())) {
+          gparent->set_red();
+          parent->set_black();
+          uncle->set_black();
+          pt = gparent;
         } else {
           if (pt == parent->mLeft) {
             rotate_right(root, parent);
             pt = parent;
             parent = pt->mParent;
           }
-          rotate_left(root, grand_parent);
-          std::swap(parent->mColor, grand_parent->mColor);
+          rotate_left(root, gparent);
+          std::swap(parent->mColor, gparent->mColor);
           pt = parent;
         }
       }
     }
 
-    root->mColor = true;
+    root->set_black();
   }
-private:
-  // remove 
 
 private:
-  template <typename U> RedBlackTreeNode *search(RedBlackTreeNode *root, const U &key) {
-    while (root != NIL) {
-      if (root->mKey < key) {
+  RedBlackTreeNode *remove(RedBlackTreeNode *root, const T &key)
+  {
+    RedBlackTreeNode *z = NIL, *x, *y, *node = root;
+    while (node != NIL)
+    {
+      if (node->mKey == key)
+      {
+        z = node;
+      }
+      if (node->mKey <= key)
+      {
+        node = node->mRight;
+      }
+      else
+      {
+        node = node->mLeft;
+      }
+    }
+    if (z == NIL) return root;
+    y = z;
+    bool color = y->mColor;
+    if (z->mLeft == NIL)
+    {
+      x = z->mRight;
+      transplant(root, z, z->mRight);
+    }
+    else if (z->mRight == NIL)
+    {
+      x = z->mLeft;
+      transplant(root, z, z->mLeft);
+    }
+    else
+    {
+      y = minimum(z->mRight);
+      color = y->mColor;
+      x = y->mRight;
+      if (y->mParent == z)
+      {
+        x->mParent = y;
+      }
+      else
+      {
+        transplant(root, y, y->mRight);
+        y->mRight = z->mRight;
+        y->mRight->mParent = y;
+      }
+      transplant(root, z, y);
+      y->mLeft = z->mLeft;
+      y->mLeft->mParent = y;
+      y->mColor = z->mColor;
+    }
+    delete z;
+    if (color == true) remove_fix(root, x); // black
+    return root;
+  }
+
+  void remove_fix(RedBlackTreeNode *root, RedBlackTreeNode *x)
+  {
+    RedBlackTreeNode *s;
+    while (x != root && x->black())
+      if (x == x->mParent->mLeft)
+      {
+        s = x->mParent->mRight;
+        if (s->red())
+        {
+          s->set_black();
+          x->mParent->set_red();
+          rotate_left(root, x->mParent);
+          s = x->mParent->mRight;
+        }
+        if (s->mLeft->black() && s->mRight->black())
+        {
+          s->set_red();
+          x = x->mParent;
+        }
+        else
+        {
+          if (s->mRight->black())
+          {
+            s->mLeft->set_black();
+            s->set_red();
+            rotate_right(root, s);
+            s = x->mParent->mRight;
+          }
+          s->mColor = x->mParent->mColor;
+          x->mParent->set_black();
+          s->mRight->set_black();
+          rotate_left(root, x->mParent);
+          x = root;
+        }
+      }
+      else
+      {
+        s = x->mParent->mLeft;
+        if (s->red())
+        {
+          s->set_black();
+          x->mParent->set_red();
+          rotate_right(root, x->mParent);
+          s = x->mParent->mLeft;
+        }
+        if (s->mRight->black() && s->mRight->black())
+        {
+          s->set_red();
+          x = x->mParent;
+        }
+        else
+        {
+          if (s->mLeft->black())
+          {
+            s->mRight->set_black();
+            s->set_red();
+            rotate_left(root, s);
+            s = x->mParent->mLeft;
+          }
+          s->mColor = x->mParent->mColor;
+          x->mParent->set_black();
+          s->mLeft->set_black();
+          rotate_right(root, x->mParent);
+          x = root;
+        }
+      }
+    x->set_black();
+  }
+
+private:
+  template <typename U> RedBlackTreeNode * search(RedBlackTreeNode *root, const U &key)
+  {
+    while (root != NIL)
+    {
+      if (root->mKey < key)
+      {
         root = root->mRight;
-      } else if (key < root->mKey) {
+      }
+      else if (key < root->mKey)
+      {
         root = root->mLeft;
-      } else {
+      }
+      else
+      {
         return root;
       }
     }
@@ -304,7 +436,8 @@ private:
   }
 
 private:
-  void clear(RedBlackTreeNode *root) {
+  void clear(RedBlackTreeNode *root)
+  {
     if (root == NIL)
       return;
     if (root->mLeft != NIL)
