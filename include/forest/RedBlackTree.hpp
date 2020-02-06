@@ -124,55 +124,37 @@ private:
 
 private:
   void rotate_left(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
-    RedBlackTreeNode *pt_right = pt->mRight;
-    pt->mRight = pt_right->mLeft;
+    RedBlackTreeNode *right = pt->mRight;
+    pt->mRight = right->mLeft;
+    if (pt->mRight != NIL) pt->mRight->mParent = pt;
+    right->mParent = pt->mParent;
 
-    if (pt->mRight != NIL) {
-      pt->mRight->mParent = pt;
-    }
-    
-    pt_right->mParent = pt->mParent;
+    if (pt->mParent == NIL) root = right;
+    else if (pt == pt->mParent->mLeft) pt->mParent->mLeft = right;
+    else pt->mParent->mRight = right;
 
-    if (pt->mParent == NIL) {
-      root = pt_right;
-    } else if (pt == pt->mParent->mLeft) {
-      pt->mParent->mLeft = pt_right;
-    } else {
-      pt->mParent->mRight = pt_right;
-    }
-    pt_right->mLeft = pt;
-    pt->mParent = pt_right;
+    right->mLeft = pt;
+    pt->mParent = right;
   }
 
   void rotate_right(RedBlackTreeNode *&root, RedBlackTreeNode *&pt) {
-    RedBlackTreeNode *pt_left = pt->mLeft;
-    pt->mLeft = pt_left->mRight;
+    RedBlackTreeNode *left = pt->mLeft;
+    pt->mLeft = left->mRight;
+    if (pt->mLeft != NIL) pt->mLeft->mParent = pt;
+    left->mParent = pt->mParent;
 
-    if (pt->mLeft != NIL) {
-      pt->mLeft->mParent = pt;
-    }
+    if (pt->mParent == NIL) root = left;
+    else if (pt == pt->mParent->mLeft) pt->mParent->mLeft = left;
+    else pt->mParent->mRight = left;
 
-    pt_left->mParent = pt->mParent;
-
-    if (pt->mParent == NIL) {
-      root = pt_left;
-    } else if (pt == pt->mParent->mLeft) {
-      pt->mParent->mLeft = pt_left;
-    } else {
-      pt->mParent->mRight = pt_left;
-    }
-    pt_left->mRight = pt;
-    pt->mParent = pt_left;
+    left->mRight = pt;
+    pt->mParent = left;
   }
 
   void transplant(RedBlackTreeNode*& root, RedBlackTreeNode *to, RedBlackTreeNode *from) {
-    if (to->mParent == NIL) {
-      root = from;
-    } else if (to == to->mParent->mLeft) {
-      to->mParent->mLeft = from;
-    } else {
-      to->mParent->mRight = from;
-    }
+    if (to->mParent == NIL) root = from;
+    else if (to == to->mParent->mLeft) to->mParent->mLeft = from;
+    else to->mParent->mRight = from;
 
     from->mParent = to->mParent;
   }
@@ -242,8 +224,20 @@ private:
   }
 
 private:
-  void remove_fix(RedBlackTreeNode *&root, RedBlackTreeNode *&node)
-  {
+  template<typename U> RedBlackTreeNode *remove(RedBlackTreeNode *&root, const U& key) {
+    if (root == NIL) return root;
+
+    if (key < root->mKey) return remove(root->mLeft, key);
+    else if (key > root->mKey) return remove(root->mRight, key);
+
+    if (root->mLeft == NIL || root->mRight == NIL) return root;
+
+    auto *temp = minimum(root->mRight);
+    root->mKey = temp->mKey;
+    return remove(root->mRight, temp->mKey);
+  }
+
+  void remove_fix(RedBlackTreeNode *&root, RedBlackTreeNode *&node) {
     if (node == NIL) return;
 
     if (node == root) {
@@ -266,9 +260,7 @@ private:
         delete node;
       }
     } else {
-      RedBlackTreeNode *sibling = NIL;
-      RedBlackTreeNode *parent = NIL;
-      RedBlackTreeNode *ptr = node;
+      RedBlackTreeNode *sibling = NIL, *parent = NIL, *ptr = node;
       ptr->set_double_black();
       while (ptr != root && ptr->double_black()) {
         parent = ptr->mParent;
@@ -326,27 +318,12 @@ private:
           }
         }
       }
+      
       if (node == node->mParent->mLeft) node->mParent->mLeft = NIL;
       else node->mParent->mRight = NIL;
       delete node;
       root->set_black();
     }
-  }
-
-  RedBlackTreeNode *remove(RedBlackTreeNode *&root, const T& data)
-  {
-    if (root == NIL) return root;
-
-    if (data < root->mKey)
-      return remove(root->mLeft, data);
-    else if (data > root->mKey)
-      return remove(root->mRight, data);
-
-    if (root->mLeft == NIL || root->mRight == NIL) return root;
-
-    auto *temp = minimum(root->mRight);
-    root->mKey = temp->mKey;
-    return remove(root->mRight, temp->mKey);
   }
 
 private:
