@@ -113,7 +113,7 @@ private:
 private:
   auto height(const RedBlackTreeNode *root) {
     if (root == NIL) return 0;
-    return std::max(height(root->mLeft), height(root->mRight));
+    return std::max(height(root->mLeft), height(root->mRight)) + 1;
   }
 
   auto size(const RedBlackTreeNode *root) {
