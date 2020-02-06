@@ -1,10 +1,10 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
-#include <forest/BinarySearchTree.hpp>
-
-SCENARIO("Test Binary Search Tree") {
-  GIVEN("An empty Binary Search Tree") {
-    forest::BinarySearchTree<int> tree;
+#include <forest/RedBlackTree.hpp>
+ 
+SCENARIO("Test RedBlack Tree") {
+  GIVEN("An empty RedBlack Tree") {
+    forest::RedBlackTree<int> tree;
     REQUIRE(tree.height() == 0);
     REQUIRE(tree.size() == 0);
     REQUIRE(tree.minimum() == std::nullopt);
@@ -14,8 +14,7 @@ SCENARIO("Test Binary Search Tree") {
       for (int key = 0; key < 10; ++key) {
         tree.insert(key);
       }
-      REQUIRE(tree.height() == 10);
-      REQUIRE(tree.size() == 10);
+      REQUIRE(tree.height() == 5);
       AND_WHEN("I want the node with the minimum key") {
         auto min = tree.minimum();
         REQUIRE(min != std::nullopt);
@@ -41,10 +40,10 @@ SCENARIO("Test Binary Search Tree") {
         int key = GENERATE(range(0, 9));
         tree.remove(key);
         REQUIRE(tree.search(key) == std::nullopt);
-        CHECK(tree.height() == 9);
+        CHECK(tree.height() == 4);
         CHECK(tree.size() == 9);
       }
-      AND_WHEN("I clear the Binary Search Tree") {
+      AND_WHEN("I clear the RedBlack Tree") {
         tree.clear();
         REQUIRE(tree.height() == 0);
         REQUIRE(tree.size() == 0);
