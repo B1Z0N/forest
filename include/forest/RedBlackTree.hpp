@@ -228,7 +228,7 @@ private:
     if (root == NIL) return root;
 
     if (key < root->mKey) return remove(root->mLeft, key);
-    else if (key > root->mKey) return remove(root->mRight, key);
+    else if (!(key == root->mKey)) return remove(root->mRight, key);
 
     if (root->mLeft == NIL || root->mRight == NIL) return root;
 
